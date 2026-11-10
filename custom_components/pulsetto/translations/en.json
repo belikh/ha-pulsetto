@@ -1,0 +1,72 @@
+{
+    "config": {
+        "flow_title": "{name}",
+        "step": {
+            "user": {
+                "title": "Pulsetto device",
+                "description": "Pick a discovered Pulsetto device (Nordic UART service).",
+                "data": {
+                    "address": "Device"
+                }
+            },
+            "confirm": {
+                "title": "Confirm Pulsetto device",
+                "description": "Add {name}? The device accepts commands from any Bluetooth client in range, so Home Assistant can start and stop stimulation."
+            }
+        },
+        "abort": {
+            "already_configured": "Device is already configured",
+            "no_devices_found": "No Pulsetto device advertising the Nordic UART service was found"
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "charging": {"name": "Charging"},
+            "active_session": {"name": "Active session"}
+        },
+        "button": {
+            "start_both": {"name": "Start session (both)"},
+            "start_left": {"name": "Start session (left)"},
+            "start_right": {"name": "Start session (right)"},
+            "stop": {"name": "Stop session"}
+        },
+        "number": {
+            "intensity": {"name": "Intensity"}
+        }
+    },
+    "services": {
+        "stimulate": {
+            "name": "Stimulate",
+            "description": "Starts stimulation on the chosen side at the chosen intensity.",
+            "fields": {
+                "address": {"name": "Device address", "description": "BLE address of the device. Omit to use the first configured device."},
+                "side": {"name": "Side", "description": "Which electrode side to stimulate."},
+                "level": {"name": "Intensity", "description": "Intensity level, 0-9."},
+                "time": {"name": "Duration", "description": "Seconds to stimulate before sending stop. Omit for no auto-stop."}
+            }
+        },
+        "stop": {
+            "name": "Stop",
+            "description": "Sends the end-session sequence and stops stimulation.",
+            "fields": {
+                "address": {"name": "Device address", "description": "BLE address of the device. Omit to use the first configured device."}
+            }
+        },
+        "set_level": {
+            "name": "Set intensity",
+            "description": "Sends a single level byte (0-9) without touching the side.",
+            "fields": {
+                "address": {"name": "Device address", "description": "BLE address of the device. Omit to use the first configured device."},
+                "level": {"name": "Intensity", "description": "Intensity level, 0-9."}
+            }
+        },
+        "set_led": {
+            "name": "Set LED brightness",
+            "description": "Sends one of the LED brightness command bytes.",
+            "fields": {
+                "address": {"name": "Device address", "description": "BLE address of the device. Omit to use the first configured device."},
+                "brightness": {"name": "Brightness", "description": "LED brightness: low, mid or high."}
+            }
+        }
+    }
+}

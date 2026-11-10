@@ -21,7 +21,7 @@ async def async_setup_entry(
 class PulsettoIntensityNumber(PulsettoEntity, RestoreNumber, NumberEntity):
     """Direct `1`..`9` level writes per the doc; `0` pauses output."""
 
-    _attr_name = "Intensity"
+    _attr_translation_key = "intensity"
     _attr_native_min_value = 0
     _attr_native_max_value = 9
     _attr_native_step = 1
@@ -33,6 +33,7 @@ class PulsettoIntensityNumber(PulsettoEntity, RestoreNumber, NumberEntity):
         self._attr_native_value = 0
 
     async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
         last = await self.async_get_last_number()
         if last is not None:
             self._attr_native_value = last.native_value

@@ -1,6 +1,6 @@
 """Constants for the Pulsetto BLE integration.
 
-Protocol reconstructed from react-native app (Hermes bundle, v2.2.81). The
+Protocol follows the community documentation linked in the README. The
 device exposes a standard Nordic UART Service; commands are single ASCII
 bytes Base64-encoded and written to the RX characteristic. Notifications
 arrive Base64-encoded on TX. There is no pairing/bonding/auth on the radio.

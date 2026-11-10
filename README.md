@@ -5,9 +5,12 @@ directly, so HA can stimulate and read state without the phone app.
 
 The wire protocol follows Juraj Bednár's hardware-validated documentation
 ([PULSETTO_PROTOCOL.md](https://github.com/jooray/pulse-libre-desktop/blob/main/docs/PULSETTO_PROTOCOL.md)),
-from his independent PulseLibre / pulse-libre-desktop clients, cross-checked
-against the official app's decompiled bundle (`com.pulsetto` 2.2.81).
+from his independent PulseLibre / pulse-libre-desktop clients.
 Nothing here is sanctioned by Pulsetto.
+
+**Hardware status:** the command sequences follow that document and have not
+been verified by this project's author on a device. Run
+`scripts/test_ble.py` first and report results in an issue.
 
 ## Protocol notes (issuer of truth: the doc above)
 
@@ -28,8 +31,8 @@ Nothing here is sanctioned by Pulsetto.
   updates themselves are protected by the bootloader's ECDSA signature
   check (public key published in the protocol doc), so firmware
   integrity is on-device, not app-layer.
-- During a session, status polling (`u`, `Q`) runs every 3 s; idle
-  polling is slower.
+- Status polling (`u`, `Q`) runs every 30 s. The integration reconnects
+  on the same interval when the device was out of range.
 
 ## Safety
 
@@ -37,14 +40,24 @@ This is a stimulator, and the radio has no authentication — any BLE
 client in range can drive it. Keep automations conservative:
 
 - cap level, and pair every `pulsetto.stimulate` with a stop
-- use `time:` so a ha restart can't leave a session running silently
+- use `time:` for an auto-stop. The timer lives in memory. Reload,
+  unload and a clean Home Assistant shutdown send the stop sequence first;
+  a crash or power loss cannot, so the device's own behaviour applies
+- the services need an admin user
 - validate once with `scripts/test_ble.py` before trusting entities
 
 ## Install
 
-Copy `custom_components/pulsetto/` into `<config>/custom_components/` and
-restart. Discovery triggers on the Nordic UART service UUID; the device
+Search for **Pulsetto** in HACS, download it and restart Home Assistant.
+Until it is listed, add `https://github.com/belikh/ha-pulsetto` as a HACS
+custom repository (type Integration). Manual install: copy
+`custom_components/pulsetto/` into `<config>/custom_components/`. Discovery triggers on the Nordic UART service UUID; the device
 appears under Settings → Devices & Services when powered and in range.
+
+## Privacy
+
+All traffic is local Bluetooth between Home Assistant and the device.
+Nothing is sent over the network or to any cloud service.
 
 ## Entities
 

@@ -29,7 +29,7 @@ async def async_setup_entry(
 class PulsettoChargingSensor(PulsettoEntity, BinarySensorEntity):
     """True while the `u` probe reports charging."""
 
-    _attr_name = "Charging"
+    _attr_translation_key = "charging"
     _attr_device_class = BinarySensorDeviceClass.PLUG
 
     def __init__(self, client: PulsettoClient, entry_id: str) -> None:
@@ -52,7 +52,7 @@ class PulsettoActiveSensor(PulsettoEntity, BinarySensorEntity):
     simple in-session flag.
     """
 
-    _attr_name = "Active session"
+    _attr_translation_key = "active_session"
     _attr_device_class = BinarySensorDeviceClass.RUNNING
 
     def __init__(self, client: PulsettoClient, entry_id: str) -> None:

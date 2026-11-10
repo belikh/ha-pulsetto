@@ -28,7 +28,7 @@ async def async_setup_entry(
 class PulsettoButton(PulsettoEntity, ButtonEntity):
     def __init__(self, client, entry_id, key, name):
         super().__init__(client, entry_id)
-        self._attr_name = name
+        self._attr_translation_key = key
         self._attr_unique_id = f"{entry_id}-{key}"
 
     async def async_press(self) -> None:

@@ -27,7 +27,6 @@ async def async_setup_entry(
 class PulsettoBatterySensor(PulsettoEntity, SensorEntity):
     """Percent charge per the documented (v-3.5)/0.4 calibration."""
 
-    _attr_name = "Battery"
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = "%"
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -43,6 +42,10 @@ class PulsettoBatterySensor(PulsettoEntity, SensorEntity):
             "fw_version": self._client.fw_version,
             "identity": self._client.identity,
         }
+
+    @property
+    def native_value(self) -> float | None:
+        return self._client.battery_percent
 
     async def async_update(self) -> None:
         await self._client.query_battery()

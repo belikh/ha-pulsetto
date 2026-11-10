@@ -30,7 +30,8 @@ class PulsettoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(info.address)
         self._abort_if_unique_id_configured()
         self._discovered[info.address] = info.name or info.address
-        return await self.async_step_confirm(address=info.address)
+        self.context["title_placeholders"] = {"name": self._discovered[info.address]}
+        return await self.async_step_confirm()
 
     async def async_step_user(
         self, user_input: dict[str, str] | None = None
@@ -67,13 +68,28 @@ class PulsettoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_confirm(
-        self, address: str | None = None, name: str | None = None
+        self,
+        user_input: dict | None = None,
+        address: str | None = None,
+        name: str | None = None,
     ) -> config_entries.ConfigFlowResult:
         """Second step when we came from the bluetooth async setup flow."""
+        if address is None:
+            address = self.unique_id
         if address is None:
             return self.async_abort(reason="no_devices_found")
         if name:
             self._discovered[address] = name
+        if user_input is None:
+            self.context["title_placeholders"] = {
+                "name": self._discovered.get(address, address)
+            }
+            return self.async_show_form(
+                step_id="confirm",
+                description_placeholders={
+                    "name": self._discovered.get(address, address)
+                },
+            )
         return self.async_create_entry(
             title=self._discovered.get(address, address),
             data={CONF_ADDRESS: address},

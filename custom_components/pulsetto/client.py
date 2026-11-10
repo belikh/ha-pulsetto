@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import Any
 
+from homeassistant.components import bluetooth
 from bleak_retry_connector import (
     BleakClientWithServiceCache,
     establish_connection,
@@ -49,27 +51,70 @@ class PulsettoClient:
         self.battery_voltage: float | None = None
         self.charging: bool | None = None
         self.session_active: bool = False
+        self._listeners: set[Callable[[], None]] = set()
+        self._stop_task: asyncio.Task | None = None
+
+    def add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Register a state-change callback; returns the remover."""
+        self._listeners.add(listener)
+        return lambda: self._listeners.discard(listener)
+
+    def _notify(self) -> None:
+        for listener in list(self._listeners):
+            listener()
+
+    def schedule_stop(self, delay: float) -> None:
+        """Stop the session after `delay` seconds, replacing any earlier timer."""
+        self.cancel_stop()
+
+        async def _later() -> None:
+            await asyncio.sleep(delay)
+            self._stop_task = None
+            if self.connected:
+                await self.stop_session()
+                self._notify()
+
+        self._stop_task = self.hass.async_create_task(_later())
+
+    def cancel_stop(self) -> None:
+        if self._stop_task is not None:
+            self._stop_task.cancel()
+            self._stop_task = None
+
+    def _on_disconnect(self, _client: Any) -> None:
+        self._client = None
+        self.session_active = False
+        self.cancel_stop()
+        self._notify()
 
     @property
     def connected(self) -> bool:
         return self._client is not None
 
     async def connect(self) -> None:
-        self._client = await establish_connection(
+        device = bluetooth.async_ble_device_from_address(
+            self.hass, self.address, connectable=True
+        )
+        if device is None:
+            raise ConnectionError(f"{self.address} is not in range")
+        client = await establish_connection(
             BleakClientWithServiceCache,
-            self.address,
-            name=DOMAIN,
+            device,
+            name=device.name or DOMAIN,
+            disconnected_callback=self._on_disconnect,
             timeout=CONNECT_TIMEOUT,
         )
-        await self._client.start_notify(CHAR_TX_NOTIFY, self._on_notify)
+        self._client = client
+        await client.start_notify(CHAR_TX_NOTIFY, self._on_notify)
         await self._read_device_info()
+        self._notify()
 
     async def _read_device_info(self) -> None:
         for cmd in (CMD_FIRMWARE, CMD_IDENTITY):
             try:
                 reply = await self._send_wait(cmd)
             except Exception as err:  # bleak disconnect races on info reads
-                _LOGGER.debug("%s: info read %s failed: %s", self.address, cmd.payload, err)
+                _LOGGER.debug("Info read %s failed: %s", cmd.payload, err)
                 continue
             fields = parse_reply(reply)
             if "fw_version" in fields:
@@ -78,13 +123,11 @@ class PulsettoClient:
                 self.identity = reply
 
     async def disconnect(self) -> None:
-        if self._client is None:
-            return
-        try:
-            await self._client.disconnect()
-        finally:
-            self._client = None
-            self.session_active = False
+        self.cancel_stop()
+        client, self._client = self._client, None
+        self.session_active = False
+        if client is not None:
+            await client.disconnect()
 
     def _on_notify(self, _handle: int, payload: bytearray) -> None:
         raw = ble.decode_notification(bytes(payload))
@@ -95,6 +138,7 @@ class PulsettoClient:
             if not line.strip():
                 continue
             self._consume_reply(line.strip())
+        self._notify()
 
     def _consume_reply(self, line: str) -> None:
         fields = parse_reply(line)
@@ -107,7 +151,7 @@ class PulsettoClient:
         elif "fw_version" in fields:
             self.fw_version = str(fields["fw_version"])
         elif "mode" in fields:
-            _LOGGER.debug("%s: mode reply %r", self.address, line)
+            _LOGGER.debug("Mode reply %r", line)
 
     async def _send_wait(self, cmd, timeout: float = NOTIF_TIMEOUT) -> str:
         """Send a command and wait for one or more notification lines."""
@@ -130,7 +174,7 @@ class PulsettoClient:
                 retry_ok = True
                 break
             except Exception:
-                _LOGGER.debug("%s: write %r failed, retrying", self.address, cmd.payload)
+                _LOGGER.debug("Write %r failed, retrying", cmd.payload)
                 await asyncio.sleep(0.05)
         if not retry_ok:
             raise ConnectionError(f"write {cmd.payload!r} failed repeatedly")
@@ -175,6 +219,7 @@ class PulsettoClient:
             else ble.Command(ble.LED_DEFAULT)
         )
         self.session_active = True
+        self._notify()
 
     async def stop_session(self) -> None:
         """'+' then '-' twice, all with response."""
@@ -182,6 +227,8 @@ class PulsettoClient:
         for _ in range(STOP_SEQUENCE_COUNT):
             await self._write_secondary(ble.CMD_RAMP_DOWN)
         self.session_active = False
+        self.cancel_stop()
+        self._notify()
 
     async def _write_secondary(self, cmd) -> None:
         # Non-notification pathway; no reply bookkeeping needed.
