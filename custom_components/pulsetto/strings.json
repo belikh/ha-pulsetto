@@ -1,0 +1,17 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Pulsetto device",
+                "description": "Pick a discovered Pulsetto device (Nordic UART service)."
+            },
+            "confirm": {
+                "title": "Confirm Pulsetto device"
+            }
+        },
+        "abort": {
+            "already_configured": "Device is already configured",
+            "no_devices_found": "No Pulsetto device advertising the Nordic UART service was found"
+        }
+    }
+}

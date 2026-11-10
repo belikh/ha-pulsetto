@@ -1,0 +1,99 @@
+stimulate:
+  name: Stimulate
+  description: >-
+    Start stimulation on the chosen side at the chosen intensity. Sends the
+    side command byte (A/C/D) followed by the level byte (0-9). With `time`
+    set, HA sends the end-session byte ('-') after the delay — note the
+    app shares that byte with rampDown, so behaviour depends on device
+    context.
+  fields:
+    address:
+      name: Device address
+      description: BLE MAC (Android) or UUID (macOS). Omit to use the only configured device.
+      example: "AA:BB:CC:DD:EE:FF"
+      selector:
+        text:
+    side:
+      name: Side
+      description: Which electrode side to stimulate.
+      required: true
+      selector:
+        select:
+          options:
+            - label: Left
+              value: left
+            - label: Right
+              value: right
+            - label: Both
+              value: both
+    level:
+      name: Intensity
+      description: Intensity level, 0-9 (the app caps its UI at 9).
+      required: true
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 9
+          step: 1
+    time:
+      name: Duration
+      description: Seconds to stimulate before sending stop. Omit for no auto-stop.
+      selector:
+        number:
+          min: 1
+          max: 3600
+          step: 1
+          unit_of_measurement: s
+
+stop:
+  name: Stop
+  description: Send the end-session byte and stop stimulation.
+  fields:
+    address:
+      name: Device address
+      example: "AA:BB:CC:DD:EE:FF"
+      selector:
+        text:
+
+set_level:
+  name: Set intensity
+  description: Send a single level byte (0-9) without touching the side.
+  fields:
+    address:
+      name: Device address
+      example: "AA:BB:CC:DD:EE:FF"
+      selector:
+        text:
+    level:
+      name: Intensity
+      required: true
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 9
+          step: 1
+
+set_led:
+  name: Set LED brightness
+  description: Send one of the LED brightness command bytes (E/F/G).
+  fields:
+    address:
+      name: Device address
+      example: "AA:BB:CC:DD:EE:FF"
+      selector:
+        text:
+    brightness:
+      name: Brightness
+      required: true
+      default: mid
+      selector:
+        select:
+          options:
+            - label: Low
+              value: low
+            - label: Mid
+              value: mid
+            - label: High
+              value: high
